@@ -81,8 +81,6 @@ class App extends Component {
     Promise
       .all(iterableDataFetches)
       .then(responses => {
-        console.log(responses);
-
         const catImages = responses[0];
         const catInfos = responses[1];
 
@@ -124,6 +122,20 @@ class App extends Component {
 }
 
 class Test extends PureComponent {
+  constructor(props) {
+    super(props);
+    this.toggleHover = this.toggleHover.bind(this);
+    this.state = {
+      toggledCard: null
+    }
+  }
+
+  toggleHover(cardId) {
+    this.setState({
+      toggledCard: cardId
+    })
+  }
+
   render() {
     const { cats } = this.props;
     const breakpointColumns = {
@@ -134,9 +146,20 @@ class Test extends PureComponent {
     return (
       <Masonry breakpointCols={breakpointColumns}>
         {
-          cats.map(cat => {
+          cats.map((cat, index) => {
             return (
-              <Card image={cat.imageUrl} fact={cat.fact} />
+              <Card
+                key={index}
+                id={index}
+                toggleHover={(id) => this.toggleHover(id)}
+                isHovered={
+                  this.state.toggledCard === null ? 
+                    true : 
+                    index === this.state.toggledCard
+                }
+                image={cat.imageUrl}
+                fact={cat.fact}
+              />
             )
           })
         }
@@ -152,12 +175,18 @@ const imageStyle = {
 }
 
 const cardStyle = {
-  opacity: "0.5"
+  display: "flex",
+  flexDirection: "column",
+  alignContent: "center",
+  justifyContent: "center",
+  opacity: "0.5",
+  padding: "10px"
 }
 
 const hoveredCardStyle = {
+  ...cardStyle,
   opacity: "1",
-  boxShadow: "2px 2px grey",
+  boxShadow: "0px 2px grey",
   borderRadius: "5px"
 }
 
@@ -173,21 +202,12 @@ class Card extends PureComponent {
     }
   }
   render() {
-    const { image, fact } = this.props;
+    const { image, fact, isHovered, id, toggleHover } = this.props;
     return (
       <div
-        onMouseEnter={() => {
-          this.setState({
-            isHovered: true
-          }
-          )
-        }}
-        onMouseLeave={() => {
-          this.setState({
-            isHovered: false
-          })
-        }}
-        style={this.state.isHovered ? hoveredCardStyle : cardStyle}
+        onMouseEnter={() => toggleHover(id)}
+        onMouseLeave={() => toggleHover(null)}
+        style={isHovered ? hoveredCardStyle : cardStyle}
       >
         <img
           alt=""
