@@ -1,8 +1,51 @@
 import React, { Component, PureComponent } from 'react';
 import './App.css';
-var parseString = require('xml2js').Parser({ explicitArray: false }).parseString;
 
-const imagesLink = "https://cors-anywhere.herokuapp.com/http://thecatapi.com/api/images/get?format=xml&results_per_page=25";
+import { CORS_PROXY, IMAGES_SOURCE, INFO_SOURCE } from "./config";
+
+const { promisify } = require("es6-promisify");
+const parseString = require('xml2js').Parser({ explicitArray: false, async: true }).parseString;
+const parseStringAsync = promisify(parseString);
+
+const imageSource = CORS_PROXY + IMAGES_SOURCE;
+const infoSource = CORS_PROXY + INFO_SOURCE;
+
+function parseXMLToJson(xmlString) {
+  return parseStringAsync(xmlString)
+    .then(({ response }) => {
+      const imageUrls = response.data.images.image;
+      return imageUrls.map(image => image.url);
+    })
+    .catch(err => console.error(err));
+}
+
+function retrieveResponseData(fetchResponse) {
+  const contentType = fetchResponse.headers.get("content-type");
+  switch (contentType) {
+    case "application/xml": return fetchResponse.text();
+    case "application/json": return fetchResponse.json();
+    default: return null;
+  }
+}
+
+function processImages(imageSourceUrl) {
+  return window
+    .fetch(imageSourceUrl)
+    .then(response => retrieveResponseData(response))
+    .then(parseXMLToJson)
+    .then(imageData => imageData.map(url => {
+      return { imageUrl: url }
+    }))
+    .catch(err => console.error(err))
+}
+
+function processInfo(infoSourceUrl) {
+  return window
+    .fetch(infoSourceUrl)
+    .then(response => retrieveResponseData(response))
+    .then(infoData => infoData.data.map(info => info))
+    .catch(err => console.error(err))
+}
 
 class App extends Component {
   constructor(props) {
@@ -17,34 +60,42 @@ class App extends Component {
   }
 
   componentDidMount() {
-    window.fetch(imagesLink)
-      .then(res => res.text())
-      .then(
-        (xmlString) => {
-          parseString(xmlString, (err, { response }) => {
-            if (err) {
-              console.error("Uh oh!");
-            }
-            const imagesObject = response;
-            const images = imagesObject.data.images.image;
-            const initImages = images.map((image, index) => {
-              return {
-                id: index,
-                imageSource: image.url
-              }
-            });
-            this.setState({
-              isLoaded: true,
-              cats: initImages
-            })
-          });
-        },
-        (error) => {
-          this.setState({
-            error: true
-          })
-        }
-      )
+    const dataProcessingMap = {
+      images: imageSource,
+      info: infoSource
+    };
+
+    const iterableDataFetches = Object.entries(dataProcessingMap).map(source => {
+      const dataSourceType = source[0];
+      const dataSource = source[1];
+
+      switch (dataSourceType) {
+        case "images": return processImages(dataSource);
+        case "info": return processInfo(dataSource);
+        default: return null;
+      }
+    });
+
+    Promise
+      .all(iterableDataFetches)
+      .then(responses => {
+        console.log(responses);
+        
+        const catImages = responses[0];
+        const catInfos = responses[1];
+        
+        const initCats = catImages.map((image, index) => {
+          return {
+            ...image,
+            ...catInfos[index]
+          }
+        });
+
+        this.setState({
+          isLoaded: true,
+          cats: initCats
+        });
+      });
   }
 
   toggleFavoriteFact(factId) {
@@ -73,11 +124,12 @@ class Test extends PureComponent {
   render() {
     const { cats } = this.props;
     return (
-      cats.map(cat => {
+      cats.map((cat, index) => {
         return (
           <div>
-            <div>{cat.id + 1}</div>
-            <img alt="" src={cat.imageSource}/>
+            <div>{index + 1}</div>
+            <img alt="" src={cat.imageUrl} />
+            <div>{cat.fact}</div>
           </div>
         )
       })
