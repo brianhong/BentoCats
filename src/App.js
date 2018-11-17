@@ -1,6 +1,7 @@
 import React, { Component, PureComponent } from 'react';
 import './App.css';
 
+import Masonry from "react-masonry-css";
 import { CORS_PROXY, IMAGES_SOURCE, INFO_SOURCE } from "./config";
 
 const { promisify } = require("es6-promisify");
@@ -9,6 +10,7 @@ const parseStringAsync = promisify(parseString);
 
 const imageSource = CORS_PROXY + IMAGES_SOURCE;
 const infoSource = CORS_PROXY + INFO_SOURCE;
+
 
 function parseXMLToJson(xmlString) {
   return parseStringAsync(xmlString)
@@ -80,10 +82,10 @@ class App extends Component {
       .all(iterableDataFetches)
       .then(responses => {
         console.log(responses);
-        
+
         const catImages = responses[0];
         const catInfos = responses[1];
-        
+
         const initCats = catImages.map((image, index) => {
           return {
             ...image,
@@ -112,6 +114,7 @@ class App extends Component {
 
   render() {
     const { cats } = this.state;
+
     return (
       <div className="App">
         {this.state.isLoaded ? <Test cats={cats} /> : <div>HelloWOrld</div>}
@@ -123,17 +126,39 @@ class App extends Component {
 class Test extends PureComponent {
   render() {
     const { cats } = this.props;
+    const breakpointColumns = {
+      "default": 3,
+      700: 2,
+      500: 1
+    };
     return (
-      cats.map((cat, index) => {
-        return (
-          <div>
-            <div>{index + 1}</div>
-            <img alt="" src={cat.imageUrl} />
-            <div>{cat.fact}</div>
-          </div>
-        )
-      })
+      <Masonry breakpointCols={breakpointColumns}>
+        {
+          cats.map(cat => {
+            return (
+              <Card image={cat.imageUrl} fact={cat.fact} />
+            )
+          })
+        }
+      </Masonry>
     );
+  }
+}
+
+class Card extends PureComponent {
+  render() {
+    const { image, fact } = this.props;
+    return (
+      <div>
+        <img
+          alt=""
+          src={image}
+          style={
+            { objectFit: "contain" }
+          } />
+        <div>{fact}</div>
+      </div>
+    )
   }
 }
 
