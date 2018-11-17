@@ -145,19 +145,56 @@ class Test extends PureComponent {
   }
 }
 
+const imageStyle = {
+  objectFit: "contain",
+  paddingBottom: "20px",
+  borderBottom: "1px solid black",
+}
+
+const cardStyle = {
+  opacity: "0.5"
+}
+
+const hoveredCardStyle = {
+  opacity: "1",
+  boxShadow: "2px 2px grey",
+  borderRadius: "5px"
+}
+
+const infoContainer = {
+  padding: "20px 10px"
+}
+
 class Card extends PureComponent {
+  constructor(props) {
+    super(props);
+    this.state = {
+      isHovered: false
+    }
+  }
   render() {
     const { image, fact } = this.props;
     return (
-      <div>
+      <div
+        onMouseEnter={() => {
+          this.setState({
+            isHovered: true
+          }
+          )
+        }}
+        onMouseLeave={() => {
+          this.setState({
+            isHovered: false
+          })
+        }}
+        style={this.state.isHovered ? hoveredCardStyle : cardStyle}
+      >
         <img
           alt=""
           src={image}
-          style={
-            { objectFit: "contain" }
-          } />
-        <div>{fact}</div>
-      </div>
+          style={imageStyle} />
+        <div style={infoContainer}>{fact}</div>
+      </div >
     )
   }
 }
