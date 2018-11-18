@@ -1,59 +1,13 @@
-import React, { Component, PureComponent } from 'react';
+import React, { Component } from 'react';
 import './App.css';
 import logo from "./logo.svg";
 import Masonry from "react-masonry-css";
 import { CORS_PROXY, IMAGES_SOURCE, INFO_SOURCE } from "./config";
-
-const { promisify } = require("es6-promisify");
-const parseString = require('xml2js').Parser({ explicitArray: false, async: true }).parseString;
-const parseStringAsync = promisify(parseString);
+import Card from "./Card";
+import { processImages, processInfo, sortByLastWord } from "./helpers";
 
 const imageSource = CORS_PROXY + IMAGES_SOURCE;
 const infoSource = CORS_PROXY + INFO_SOURCE;
-
-
-function parseXMLToJson(xmlString) {
-  return parseStringAsync(xmlString)
-    .then(({ response }) => {
-      const imageUrls = response.data.images.image;
-      return imageUrls.map(image => image.url);
-    })
-    .catch(err => console.error(err));
-}
-
-function retrieveResponseData(fetchResponse) {
-  const contentType = fetchResponse.headers.get("content-type");
-  switch (contentType) {
-    case "application/xml": return fetchResponse.text();
-    case "application/json": return fetchResponse.json();
-    default: return null;
-  }
-}
-
-function processImages(imageSourceUrl) {
-  return window
-    .fetch(imageSourceUrl)
-    .then(response => retrieveResponseData(response))
-    .then(parseXMLToJson)
-    .then(imageData => imageData.map(url => {
-      return { imageUrl: url }
-    }))
-    .catch(err => console.error(err))
-}
-
-function processInfo(infoSourceUrl) {
-  return window
-    .fetch(infoSourceUrl)
-    .then(response => retrieveResponseData(response))
-    .then(infoData => infoData.data.map(info => info))
-    .catch(err => console.error(err))
-}
-
-function sortByLastWord(firstStr, secondStr) {
-  const firstWord = firstStr.trim().slice(-1);
-  const secondWord = secondStr.trim().slice(-1);
-  return firstWord.localeCompare(secondWord);
-}
 
 class App extends Component {
   constructor(props) {
@@ -61,10 +15,18 @@ class App extends Component {
     this.state = {
       error: null,
       isLoaded: false,
-      cats: [],
-      favorites: []
+      cats: null,
+      toggledCard: null,
+      favorited: [],
+      showingFavorites: false
     }
+
+    this.sortCards = this.sortCards.bind(this);
     this.toggleFavoriteFact = this.toggleFavoriteFact.bind(this);
+    this.isFavorited = this.isFavorited.bind(this);
+    this.isHovered = this.isHovered.bind(this);
+    this.toggleHover = this.toggleHover.bind(this);
+    this.toggleFavoritesView = this.toggleFavoritesView.bind(this);
   }
 
   componentDidMount() {
@@ -91,34 +53,104 @@ class App extends Component {
         const catInfos = responses[1];
 
         const initCats = catImages.map((image, index) => {
-          return {
-            ...image,
-            ...catInfos[index]
-          }
+          return [
+            index,
+            {
+              ...image,
+              ...catInfos[index]
+            }]
         });
 
         this.setState({
           isLoaded: true,
-          cats: initCats
+          cats: new Map(initCats)
         });
       });
   }
 
-  toggleFavoriteFact(factId) {
-    const updatedFavoritesList = this.state.favorites.includes(factId) ?
-      this.state.favorites.filter(favorited => favorited.id !== factId) :
-      [...this.state.favorites, factId];
+  sortCards(comparator = null) {
+    const sortedCats = new Map([...this.state.cats.entries()].sort(comparator));
+    this.setState({
+      cats: sortedCats
+    });
+  }
 
-    this.setState({ favorites: updatedFavoritesList });
+  toggleFavoriteFact(id) {
+    const { favorited } = this.state;
+
+    const updatedFavorites = favorited.includes(id) ?
+      favorited.filter(favoriteId => favoriteId !== id) :
+      [...favorited, id];
+
+    this.setState({
+      favorited: updatedFavorites
+    });
+  }
+
+  isFavorited(id) {
+    return this.state.favorited.includes(id);
+  }
+
+  toggleHover(cardId = null) {
+    this.setState({
+      toggledCard: cardId
+    })
+  }
+
+  isHovered(id) {
+    return this.state.toggledCard === null ?
+      true :
+      id === this.state.toggledCard
+  }
+
+  toggleFavoritesView() {
+    this.setState({
+      showingFavorites: !this.state.showingFavorites
+    });
   }
 
   render() {
-    const { cats } = this.state;
+    const { cats, favorited, showingFavorites } = this.state;
+
+    const renderCatsProp = [];
+    
+    !!cats && cats.forEach((cat, id, _) => {
+      console.log(id, favorited.includes(id));
+      if (showingFavorites) {
+        favorited.includes(id) && renderCatsProp.push(
+          <Card
+            key={id}
+            id={id}
+            toggleHover={id => this.toggleHover(id)}
+            isHovered={this.isHovered(id)}
+            isFavorited={this.isFavorited(id)}
+            toggleFavoriteStatus={() => this.toggleFavoriteFact(id)}
+            image={cat.imageUrl}
+            fact={cat.fact}
+          />)
+      } else {
+        renderCatsProp.push(
+          <Card
+            key={id}
+            id={id}
+            toggleHover={id => this.toggleHover(id)}
+            isHovered={this.isHovered(id)}
+            isFavorited={this.isFavorited(id)}
+            toggleFavoriteStatus={() => this.toggleFavoriteFact(id)}
+            image={cat.imageUrl}
+            fact={cat.fact}
+          />)
+      }
+    });
 
     return (
       <div className="App">
         {this.state.isLoaded ?
-          <Test cats={cats} /> :
+          <Test
+            cats={renderCatsProp}
+            sortCards={this.sortCards}
+            toggleFavoritesView={this.toggleFavoritesView}
+          /> :
           <img className={"App-logo"} alt="" src={logo} />
         }
       </div>
@@ -134,33 +166,13 @@ function Button({ label, clickHandler }) {
   );
 }
 
-class Test extends PureComponent {
-  constructor(props) {
-    super(props);
+const controlsContainer = {
+  paddingBottom: "10px"
+}
 
-    this.state = {
-      toggledCard: null
-    }
-
-    this.toggleHover = this.toggleHover.bind(this);
-    this.sortCards = this.sortCards.bind(this);
-  }
-
-  toggleHover(cardId = null) {
-    this.setState({
-      toggledCard: cardId
-    })
-  }
-
-  sortCards(comparator = null) {
-    const sortedCats = this.state.cats.map(cat => cat.info).sort(comparator);
-    this.setState({
-      cats: sortedCats
-    })
-  }
-
+class Test extends Component {
   render() {
-    const { cats } = this.props;
+    const { cats, sortCards, toggleFavoritesView } = this.props;
     const breakpointColumns = {
       "default": 3,
       700: 2,
@@ -168,90 +180,21 @@ class Test extends PureComponent {
     };
     return (
       <div>
-        <div>
+        <div style={controlsContainer} >
           <Button
             label="Sort"
-            clickHandler={() => this.sortCards(sortByLastWord)}
+            clickHandler={() => sortCards(sortByLastWord)}
           />
           <Button
             label="Favorites"
-            clickHandler={() => {}}
+            clickHandler={() => toggleFavoritesView()}
           />
         </div>
         <Masonry breakpointCols={breakpointColumns}>
-          {
-            cats.map((cat, index) => {
-              return (
-                <Card
-                  key={index}
-                  id={index}
-                  toggleHover={(id) => this.toggleHover(id)}
-                  isHovered={
-                    this.state.toggledCard === null ?
-                      true :
-                      index === this.state.toggledCard
-                  }
-                  image={cat.imageUrl}
-                  fact={cat.fact}
-                />
-              )
-            })
-          }
+          {cats}
         </Masonry>
       </div>
     );
-  }
-}
-
-const imageStyle = {
-  objectFit: "contain",
-  paddingBottom: "20px",
-  borderBottom: "1px solid black",
-}
-
-const cardStyle = {
-  display: "flex",
-  flexDirection: "column",
-  alignContent: "center",
-  justifyContent: "center",
-  opacity: "0.5",
-  padding: "10px"
-}
-
-const hoveredCardStyle = {
-  ...cardStyle,
-  opacity: "1",
-  boxShadow: "0px 2px grey",
-  borderRadius: "5px"
-}
-
-const infoContainer = {
-  padding: "20px 10px"
-}
-
-class Card extends PureComponent {
-  constructor(props) {
-    super(props);
-    this.state = {
-      isHovered: false
-    }
-  }
-  render() {
-    const { image, fact, isHovered, id, toggleHover } = this.props;
-    return (
-      <div
-        onMouseEnter={() => toggleHover(id)}
-        onMouseLeave={() => toggleHover(null)}
-        onClick={() => console.log("This is when I'd open a modal with this card")}
-        style={isHovered ? hoveredCardStyle : cardStyle}
-      >
-        <img
-          alt=""
-          src={image}
-          style={imageStyle} />
-        <div style={infoContainer}>{fact}</div>
-      </div >
-    )
   }
 }
 
