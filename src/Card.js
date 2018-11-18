@@ -37,41 +37,46 @@ const Card = ({
     isFavorited,
     toggleFavoriteStatus,
     toggleModal,
-    customImageStyle = {}
+    customImageStyle = {},
+    inModal = false
 }) => {
     return (
         <div
-            onMouseEnter={() => toggleHover(id)}
-            onMouseLeave={() => toggleHover(null)}
+            onMouseEnter={() => !inModal && toggleHover(id)}
+            onMouseLeave={() => !inModal && toggleHover(null)}
             onClick={toggleModal}
             style={isHovered ? hoveredCardStyle : cardStyle}
         >
             <img
                 alt=""
                 src={image}
-                style={{...imageStyle, ...customImageStyle}}
+                style={{ ...imageStyle, ...customImageStyle }}
             />
 
-            <div style={infoContainer}>
-                {fact}
-            </div>
+            <div style={infoContainer}>{fact}</div>
 
-            <form>
-                <label>
-                    {"Favorite"}
-                    <input
-                        name="isFavorited"
-                        type="checkbox"
-                        checked={isFavorited}
-                        onChange={e => {
-                            e.stopPropagation();
-                            toggleFavoriteStatus();
-                        }}
-                    />
-                </label>
-            </form>
-        </div >
+            <InputController
+                inputLabel={"Favorite: "}
+                checked={isFavorited}
+                inputClickHandler={toggleFavoriteStatus}
+            />
+        </div>
     )
 }
 
-export default Card;
+
+const InputController = ({ inputLabel, checked, inputClickHandler }) => {
+    return (
+        <form>
+            <label>{inputLabel}</label>
+            <input
+                name="isFavorited"
+                type="checkbox"
+                checked={checked}
+                onChange={inputClickHandler}
+            />
+        </form>
+    );
+}
+
+export default Card; 
