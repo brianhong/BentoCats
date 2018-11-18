@@ -1,6 +1,6 @@
 import React, { Component, PureComponent } from 'react';
 import './App.css';
-
+import logo from "./logo.svg";
 import Masonry from "react-masonry-css";
 import { CORS_PROXY, IMAGES_SOURCE, INFO_SOURCE } from "./config";
 
@@ -47,6 +47,12 @@ function processInfo(infoSourceUrl) {
     .then(response => retrieveResponseData(response))
     .then(infoData => infoData.data.map(info => info))
     .catch(err => console.error(err))
+}
+
+function sortByLastWord(firstStr, secondStr) {
+  const firstWord = firstStr.trim().slice(-1);
+  const secondWord = secondStr.trim().slice(-1);
+  return firstWord.localeCompare(secondWord);
 }
 
 class App extends Component {
@@ -103,11 +109,7 @@ class App extends Component {
       this.state.favorites.filter(favorited => favorited.id !== factId) :
       [...this.state.favorites, factId];
 
-    this.setState((state, props) => {
-      return {
-        favorites: updatedFavoritesList
-      }
-    });
+    this.setState({ favorites: updatedFavoritesList });
   }
 
   render() {
@@ -115,24 +117,45 @@ class App extends Component {
 
     return (
       <div className="App">
-        {this.state.isLoaded ? <Test cats={cats} /> : <div>HelloWOrld</div>}
+        {this.state.isLoaded ?
+          <Test cats={cats} /> :
+          <img className={"App-logo"} alt="" src={logo} />
+        }
       </div>
     );
   }
 }
 
+function Button({ label, clickHandler }) {
+  return (
+    <button type="button" onClick={clickHandler}>
+      {label}
+    </button>
+  );
+}
+
 class Test extends PureComponent {
   constructor(props) {
     super(props);
-    this.toggleHover = this.toggleHover.bind(this);
+
     this.state = {
       toggledCard: null
     }
+
+    this.toggleHover = this.toggleHover.bind(this);
+    this.sortCards = this.sortCards.bind(this);
   }
 
-  toggleHover(cardId) {
+  toggleHover(cardId = null) {
     this.setState({
       toggledCard: cardId
+    })
+  }
+
+  sortCards(comparator = null) {
+    const sortedCats = this.state.cats.map(cat => cat.info).sort(comparator);
+    this.setState({
+      cats: sortedCats
     })
   }
 
@@ -144,26 +167,38 @@ class Test extends PureComponent {
       500: 1
     };
     return (
-      <Masonry breakpointCols={breakpointColumns}>
-        {
-          cats.map((cat, index) => {
-            return (
-              <Card
-                key={index}
-                id={index}
-                toggleHover={(id) => this.toggleHover(id)}
-                isHovered={
-                  this.state.toggledCard === null ? 
-                    true : 
-                    index === this.state.toggledCard
-                }
-                image={cat.imageUrl}
-                fact={cat.fact}
-              />
-            )
-          })
-        }
-      </Masonry>
+      <div>
+        <div>
+          <Button
+            label="Sort"
+            clickHandler={() => this.sortCards(sortByLastWord)}
+          />
+          <Button
+            label="Favorites"
+            clickHandler={() => {}}
+          />
+        </div>
+        <Masonry breakpointCols={breakpointColumns}>
+          {
+            cats.map((cat, index) => {
+              return (
+                <Card
+                  key={index}
+                  id={index}
+                  toggleHover={(id) => this.toggleHover(id)}
+                  isHovered={
+                    this.state.toggledCard === null ?
+                      true :
+                      index === this.state.toggledCard
+                  }
+                  image={cat.imageUrl}
+                  fact={cat.fact}
+                />
+              )
+            })
+          }
+        </Masonry>
+      </div>
     );
   }
 }
@@ -207,6 +242,7 @@ class Card extends PureComponent {
       <div
         onMouseEnter={() => toggleHover(id)}
         onMouseLeave={() => toggleHover(null)}
+        onClick={() => console.log("This is when I'd open a modal with this card")}
         style={isHovered ? hoveredCardStyle : cardStyle}
       >
         <img
