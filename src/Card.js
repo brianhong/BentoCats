@@ -29,10 +29,10 @@ const infoContainer = {
 }
 
 const Card = ({
+    id,
     image,
     fact,
     isHovered,
-    id,
     toggleHover,
     isFavorited,
     toggleFavoriteStatus,
@@ -74,6 +74,7 @@ const InputController = ({ inputLabel, checked, inputClickHandler }) => {
                 type="checkbox"
                 checked={checked}
                 onChange={inputClickHandler}
+                onClick={e => e.stopPropagation()}
             />
         </form>
     );
