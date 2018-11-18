@@ -8,6 +8,8 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 
 * To filter out by favorites, you must have at least one favorited card (control button will appear on top)
 
+* Tested on Chrome, most likely will not support IE(X <= 11)
+
 ## Available Scripts
 
 In the project directory, you can run:
