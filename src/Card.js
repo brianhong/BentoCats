@@ -1,9 +1,11 @@
-import React, { Component, PureComponent } from 'react';
+import React from 'react';
 
 const imageStyle = {
     objectFit: "contain",
     paddingBottom: "20px",
     borderBottom: "1px solid black",
+    height: "100%",
+    width: "100%"
 }
 
 const cardStyle = {
@@ -26,44 +28,50 @@ const infoContainer = {
     padding: "20px 10px"
 }
 
-export default class Card extends PureComponent {
-    constructor(props) {
-        super(props);
-        this.state = {
-            isHovered: false
-        }
-    }
-    render() {
-        const { image, fact, isHovered, id, toggleHover, isFavorited, toggleFavoriteStatus } = this.props;
-        return (
-            <div
-                onMouseEnter={() => toggleHover(id)}
-                onMouseLeave={() => toggleHover(null)}
-                onClick={() => console.log("This is when I'd open a modal with this card")}
-                style={isHovered ? hoveredCardStyle : cardStyle}
-            >
-                <img
-                    alt=""
-                    src={image}
-                    style={imageStyle}
-                />
+const Card = ({
+    image,
+    fact,
+    isHovered,
+    id,
+    toggleHover,
+    isFavorited,
+    toggleFavoriteStatus,
+    toggleModal,
+    customImageStyle = {}
+}) => {
+    return (
+        <div
+            onMouseEnter={() => toggleHover(id)}
+            onMouseLeave={() => toggleHover(null)}
+            onClick={toggleModal}
+            style={isHovered ? hoveredCardStyle : cardStyle}
+        >
+            <img
+                alt=""
+                src={image}
+                style={{...imageStyle, ...customImageStyle}}
+            />
 
-                <div style={infoContainer}>
-                    {fact}
-                </div>
+            <div style={infoContainer}>
+                {fact}
+            </div>
 
-                <form>
-                    <label>
-                        Favorite
-                        <input
-                            name="isFavorited"
-                            type="checkbox"
-                            checked={isFavorited}
-                            onChange={toggleFavoriteStatus}
-                        />
-                    </label>
-                </form>
-            </div >
-        )
-    }
+            <form>
+                <label>
+                    {"Favorite"}
+                    <input
+                        name="isFavorited"
+                        type="checkbox"
+                        checked={isFavorited}
+                        onChange={e => {
+                            e.stopPropagation();
+                            toggleFavoriteStatus();
+                        }}
+                    />
+                </label>
+            </form>
+        </div >
+    )
 }
+
+export default Card;

@@ -9,6 +9,41 @@ import { processImages, processInfo, sortByLastWord } from "./helpers";
 const imageSource = CORS_PROXY + IMAGES_SOURCE;
 const infoSource = CORS_PROXY + INFO_SOURCE;
 
+const modalContainer = {
+  position: "fixed",
+  top: "0",
+  left: "0",
+  width: "100%",
+  height: "100%",
+  background: "rgba(0, 0, 0, 0.6)",
+  display: "inline-block",
+  pointerEvents: "auto"
+}
+
+const modalContent = {
+  position: "fixed",
+  background: "white",
+  width: "80%",
+  height: "auto",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%,-50%)"
+};
+
+const Modal = ({ children }) => {
+  return (
+    <div style={modalContainer}>
+      <section style={modalContent}>
+        {children}
+      </section>
+    </div>
+  )
+}
+
+const modalImageStyle = {
+  height: "500px"
+}
+
 class App extends Component {
   constructor(props) {
     super(props);
@@ -18,7 +53,11 @@ class App extends Component {
       cats: null,
       toggledCard: null,
       favorited: [],
-      showingFavorites: false
+      sorted: [],
+      showingFavorites: false,
+      showingSorted: false,
+      showingModal: false,
+      modalCardId: null
     }
 
     this.sortCards = this.sortCards.bind(this);
@@ -27,6 +66,7 @@ class App extends Component {
     this.isHovered = this.isHovered.bind(this);
     this.toggleHover = this.toggleHover.bind(this);
     this.toggleFavoritesView = this.toggleFavoritesView.bind(this);
+    this.toggleModal = this.toggleModal.bind(this);
   }
 
   componentDidMount() {
@@ -58,7 +98,8 @@ class App extends Component {
             {
               ...image,
               ...catInfos[index]
-            }]
+            }
+          ]
         });
 
         this.setState({
@@ -70,8 +111,11 @@ class App extends Component {
 
   sortCards(comparator = null) {
     const sortedCats = new Map([...this.state.cats.entries()].sort(comparator));
+    const sortedOrder = [...sortedCats.keys()];
+
     this.setState({
-      cats: sortedCats
+      sorted: sortedOrder,
+      showingSorted: !this.state.showingSorted
     });
   }
 
@@ -109,47 +153,61 @@ class App extends Component {
     });
   }
 
+  toggleModal(id) {
+    this.setState({
+      showingModal: !this.state.showingModal,
+      modalCardId: id
+    })
+  }
+
   render() {
-    const { cats, favorited, showingFavorites } = this.state;
+    const { cats, favorited, sorted, showingFavorites, showingSorted, showingModal, modalCardId } = this.state;
 
     const renderCatsProp = [];
-    
-    !!cats && cats.forEach((cat, id, _) => {
-      console.log(id, favorited.includes(id));
+    let modalCard = null;
+    const defaultCats = showingSorted ? new Map(sorted.map(id => [id, cats.get(id)])) : cats;
+
+    !!defaultCats && defaultCats.forEach((cat, id, _) => {
+      const catCard = (
+        <Card
+          key={id}
+          id={id}
+          toggleHover={id => this.toggleHover(id)}
+          isHovered={this.isHovered(id)}
+          isFavorited={this.isFavorited(id)}
+          toggleFavoriteStatus={() => this.toggleFavoriteFact(id)}
+          image={cat.imageUrl}
+          fact={cat.fact}
+          toggleModal={() => this.toggleModal(id)}
+        />
+      );
+
+      if (showingModal && id === modalCardId) {
+        modalCard = React.cloneElement(catCard, {
+          customImageStyle: modalImageStyle
+        })
+      }
+
       if (showingFavorites) {
-        favorited.includes(id) && renderCatsProp.push(
-          <Card
-            key={id}
-            id={id}
-            toggleHover={id => this.toggleHover(id)}
-            isHovered={this.isHovered(id)}
-            isFavorited={this.isFavorited(id)}
-            toggleFavoriteStatus={() => this.toggleFavoriteFact(id)}
-            image={cat.imageUrl}
-            fact={cat.fact}
-          />)
+        favorited.includes(id) &&
+          renderCatsProp.push(catCard);
       } else {
-        renderCatsProp.push(
-          <Card
-            key={id}
-            id={id}
-            toggleHover={id => this.toggleHover(id)}
-            isHovered={this.isHovered(id)}
-            isFavorited={this.isFavorited(id)}
-            toggleFavoriteStatus={() => this.toggleFavoriteFact(id)}
-            image={cat.imageUrl}
-            fact={cat.fact}
-          />)
+        renderCatsProp.push(catCard)
       }
     });
 
     return (
       <div className="App">
+        {this.state.showingModal && !!modalCard && <Modal>{modalCard}</Modal>}
         {this.state.isLoaded ?
           <Test
+            disabled={this.state.showingModal}
             cats={renderCatsProp}
             sortCards={this.sortCards}
             toggleFavoritesView={this.toggleFavoritesView}
+            toggleSortedView={this.toggleSortedView}
+            showingFavorites={showingFavorites}
+            showingSorted={showingSorted}
           /> :
           <img className={"App-logo"} alt="" src={logo} />
         }
@@ -172,21 +230,21 @@ const controlsContainer = {
 
 class Test extends Component {
   render() {
-    const { cats, sortCards, toggleFavoritesView } = this.props;
+    const { cats, sortCards, toggleFavoritesView, showingSorted, showingFavorites, disabled } = this.props;
     const breakpointColumns = {
       "default": 3,
       700: 2,
       500: 1
     };
     return (
-      <div>
+      <div style={disabled ? { pointerEvents: "none" } : null}>
         <div style={controlsContainer} >
           <Button
-            label="Sort"
+            label={showingSorted ? "Revert" : "Sort"}
             clickHandler={() => sortCards(sortByLastWord)}
           />
           <Button
-            label="Favorites"
+            label={showingFavorites ? "Show All" : "Favorites"}
             clickHandler={() => toggleFavoritesView()}
           />
         </div>
